@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Team Overlap Finder — Timezone Working Hours Visualizer</title>
+  <meta name="description" content="Add your remote team's timezones and working hours. See your shared overlap on a colour-coded 24-hour grid and get the top 3 best meeting times. Free, no signup." />
+  <link rel="canonical" href="https://remote-team-overlap.vercel.app/" />
+  <meta property="og:title" content="Remote Team Overlap Finder" />
+  <meta property="og:description" content="Visualise when your global team overlaps. Colour-coded grid + best meeting time suggestions. Free, no login." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://remote-team-overlap.vercel.app/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Remote Team Overlap Finder" />
+  <meta name="twitter:description" content="See exactly when your remote team can meet. Add timezones, get overlap grid + best meeting slots." />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Remote Team Overlap Finder",
+    "url": "https://remote-team-overlap.vercel.app/",
+    "description": "Free tool for remote teams to visualise timezone working-hour overlap and find the best meeting windows.",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Any",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://remote-team-overlap.vercel.app/" }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is a timezone overlap tool?",
+        "acceptedAnswer": { "@type": "Answer", "text": "A timezone overlap tool shows when team members in different time zones are simultaneously available during their working hours, making it easy to find common meeting windows." }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I find the best meeting time for a remote team?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Add each team member's timezone and working hours. The tool highlights the green overlap zone where everyone is available and suggests the top 3 one-hour meeting slots." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does this tool store my team's data?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No data is stored on any server. Your team config lives only in your browser and optionally in the shareable URL hash." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I share the overlap grid with my team?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes — click 'Copy Share Link' to get a URL that encodes your whole team setup. Share it on Slack, Notion, or email and your teammates can load it instantly." }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the best timezone overlap for US and India teams?",
+        "acceptedAnswer": { "@type": "Answer", "text": "A US East Coast (9am–6pm EST) and India (9am–6pm IST) team typically has a 30-minute to 1-hour overlap window in the early morning EST / late evening IST, around 8–9am EST / 6:30–7:30pm IST." }
+      },
+      {
+        "@type": "Question",
+        "name": "How many team members can I add?",
+        "acceptedAnswer": { "@type": "Answer", "text": "You can add up to 8 team members. Each member can have a custom name, timezone, and working-hour range." }
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --border: #e4e4e7;
+      --text: #111111;
+      --muted: #6b6b6b;
+      --accent: #2563eb;
+      --accent-light: #dbeafe;
+      --accent-hover: #1d4ed8;
+      --overlap: #16a34a;
+      --overlap-light: #dcfce7;
+      --work: #bfdbfe;
+      --work-border: #93c5fd;
+      --partial: #fef9c3;
+      --partial-border: #fde047;
+      --off: #f4f4f5;
+      --radius: 12px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.07);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; }
+
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    header p { font-size: .8rem; color: var(--muted); margin-top: 3px; }
+
+    .layout { max-width: 1100px; margin: 0 auto; padding: 24px 16px; display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+
+    /* Left panel */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+    .panel-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 14px; }
+
+    .member-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .form-row { display: flex; flex-direction: column; gap: 4px; }
+    .form-row label { font-size: .74rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    input[type=text], select { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: .88rem; background: var(--bg); color: var(--text); }
+    input[type=text]:focus, select:focus { outline: none; border-color: var(--accent); }
+    .hours-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 9px; font-size: .88rem; font-weight: 600; cursor: pointer; width: 100%; }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-sm { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: .72rem; font-weight: 600; cursor: pointer; color: var(--muted); }
+    .btn-sm:hover { background: var(--border); }
+
+    .members-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .member-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); }
+    .chip-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .chip-info { flex: 1; min-width: 0; }
+    .chip-name { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chip-tz { font-size: .72rem; color: var(--muted); }
+    .remove-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--muted); padding: 0 2px; line-height: 1; }
+    .remove-btn:hover { color: #ef4444; }
+
+    .actions { display: flex; gap: 8px; margin-top: 14px; }
+    .actions .btn { flex: 1; background: none; border: 1px solid var(--border); color: var(--text); font-size: .78rem; }
+    .actions .btn:hover { background: var(--border); }
+    .actions .btn.share-btn { border-color: var(--accent); color: var(--accent); }
+    .actions .btn.share-btn:hover { background: var(--accent-light); }
+
+    /* Right panel — grid */
+    .grid-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+    .grid-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .grid-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .tz-ref { font-size: .75rem; color: var(--muted); }
+
+    .hour-ruler { display: grid; grid-template-columns: 130px repeat(24, 1fr); margin-bottom: 4px; }
+    .hour-ruler-label { font-size: .62rem; color: var(--muted); text-align: center; padding-top: 0; }
+    .hour-ruler-name { font-size: .72rem; color: var(--muted); }
+
+    .grid-row { display: grid; grid-template-columns: 130px repeat(24, 1fr); margin-bottom: 3px; align-items: center; }
+    .row-name { font-size: .8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; display: flex; align-items: center; gap: 6px; }
+    .row-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cell { height: 28px; border-radius: 3px; margin: 0 1px; }
+    .cell-off { background: var(--off); }
+    .cell-work { background: var(--work); border: 1px solid var(--work-border); }
+    .cell-overlap { background: var(--overlap-light); border: 1px solid #86efac; }
+    .cell-partial { background: var(--partial); border: 1px solid var(--partial-border); }
+
+    .overlap-row { display: grid; grid-template-columns: 130px repeat(24, 1fr); margin-top: 8px; align-items: center; }
+    .overlap-row .row-name { font-size: .72rem; font-weight: 700; color: var(--overlap); text-transform: uppercase; letter-spacing: .04em; }
+    .overlap-cell-full { background: var(--overlap); border-radius: 3px; height: 20px; margin: 0 1px; }
+    .overlap-cell-partial { background: #86efac; border-radius: 3px; height: 20px; margin: 0 1px; }
+    .overlap-cell-none { background: transparent; height: 20px; margin: 0 1px; }
+
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: .74rem; color: var(--muted); }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+    /* Best meeting times */
+    .slots { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .slots-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+    .slot-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+    .slot-card { background: var(--overlap-light); border: 1px solid #86efac; border-radius: 10px; padding: 10px 14px; flex: 1; min-width: 120px; }
+    .slot-rank { font-size: .7rem; font-weight: 700; color: var(--overlap); text-transform: uppercase; letter-spacing: .04em; }
+    .slot-time { font-size: 1rem; font-weight: 700; color: var(--text); margin-top: 2px; }
+    .slot-detail { font-size: .72rem; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .no-overlap { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 12px 16px; font-size: .85rem; color: #9a3412; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; color: var(--muted); font-size: .88rem; gap: 8px; }
+    .empty-icon { font-size: 2.5rem; }
+
+    /* How it works + FAQ */
+    .info-section { max-width: 1100px; margin: 0 auto 0; padding: 0 16px 32px; }
+    .section-label { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 14px; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 32px; }
+    .step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .step-num { width: 30px; height: 30px; background: var(--accent-light); color: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .82rem; margin-bottom: 8px; }
+    .step h3 { font-size: .88rem; font-weight: 700; margin-bottom: 4px; }
+    .step p { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+    .faq-list { display: flex; flex-direction: column; gap: 8px; }
+    .faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .faq-q { padding: 12px 14px; font-size: .88rem; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .faq-q:hover { background: var(--bg); }
+    .faq-a { padding: 0 14px 12px; font-size: .82rem; color: var(--muted); line-height: 1.6; display: none; }
+    .faq-item.open .faq-a { display: block; }
+    .faq-chevron { transition: transform .2s; flex-shrink: 0; }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+    footer { border-top: 1px solid var(--border); padding: 20px; text-align: center; font-size: .76rem; color: var(--muted); }
+    footer a { color: var(--muted); margin: 0 8px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Remote Team Overlap Finder</h1>
+  <p>Add timezones &amp; working hours — see your exact shared overlap and best meeting windows</p>
+</header>
+
+<div class="layout">
+  <!-- LEFT: member builder -->
+  <div class="panel">
+    <p class="panel-title">Team Members <span id="count-badge" style="font-size:.72rem;font-weight:400;color:var(--muted)">(0 / 8)</span></p>
+
+    <div class="member-form">
+      <div class="form-row">
+        <label>Name or Role</label>
+        <input type="text" id="inp-name" placeholder="e.g. Priya (Bangalore)" maxlength="30" />
+      </div>
+      <div class="form-row">
+        <label>Timezone</label>
+        <select id="inp-tz"></select>
+      </div>
+      <div class="hours-row">
+        <div class="form-row">
+          <label>Work Start</label>
+          <select id="inp-start"></select>
+        </div>
+        <div class="form-row">
+          <label>Work End</label>
+          <select id="inp-end"></select>
+        </div>
+      </div>
+      <button class="btn" id="add-btn" onclick="addMember()">+ Add Member</button>
+    </div>
+
+    <div class="members-list" id="members-list"></div>
+
+    <div class="actions">
+      <button class="btn share-btn" onclick="shareLink()">🔗 Copy Link</button>
+      <button class="btn" onclick="clearAll()">🗑 Clear All</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: grid + slots -->
+  <div class="grid-panel">
+    <div id="grid-content">
+      <div class="empty-state">
+        <span class="empty-icon">🌍</span>
+        <span>Add team members to see the overlap grid</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="info-section">
+  <p class="section-label">How It Works</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h3>Add Team Members</h3><p>Enter each person's name, timezone, and typical working hours (up to 8 people).</p></div>
+    <div class="step"><div class="step-num">2</div><h3>Read the Grid</h3><p>Each row is a team member. Blue = working. Green = everyone available at once.</p></div>
+    <div class="step"><div class="step-num">3</div><h3>Pick a Meeting Slot</h3><p>The tool ranks the top 3 one-hour windows by overlap coverage and suggests the best times.</p></div>
+    <div class="step"><div class="step-num">4</div><h3>Share With Your Team</h3><p>Click "Copy Link" to share the full team setup via Slack, Notion, or email — no account needed.</p></div>
+  </div>
+
+  <p class="section-label">Frequently Asked Questions</p>
+  <div class="faq-list" id="faq-list"></div>
+</div>
+
+<footer>
+  <span>© 2026 Remote Team Overlap Finder</span>
+  <a href="privacy.html">Privacy Policy</a>
+  <a href="terms.html">Terms of Use</a>
+</footer>
+
+<script>
+// ─── TIMEZONE DATA ────────────────────────────────────────────────────────────
+const TZ_LIST = [
+  ["Pacific/Honolulu",      "Honolulu (HST, UTC-10)"],
+  ["America/Anchorage",     "Anchorage (AKST, UTC-9)"],
+  ["America/Los_Angeles",   "Los Angeles / San Francisco (PST, UTC-8)"],
+  ["America/Denver",        "Denver (MST, UTC-7)"],
+  ["America/Phoenix",       "Phoenix (MST no DST, UTC-7)"],
+  ["America/Chicago",       "Chicago / Dallas (CST, UTC-6)"],
+  ["America/New_York",      "New York / Miami (EST, UTC-5)"],
+  ["America/Toronto",       "Toronto (EST, UTC-5)"],
+  ["America/Sao_Paulo",     "São Paulo (BRT, UTC-3)"],
+  ["America/Argentina/Buenos_Aires","Buenos Aires (ART, UTC-3)"],
+  ["Atlantic/Azores",       "Azores (AZOT, UTC-1)"],
+  ["Europe/London",         "London (GMT/BST, UTC+0/+1)"],
+  ["Europe/Lisbon",         "Lisbon (WET, UTC+0)"],
+  ["Europe/Paris",          "Paris / Berlin / Madrid (CET, UTC+1)"],
+  ["Europe/Amsterdam",      "Amsterdam / Brussels (CET, UTC+1)"],
+  ["Europe/Rome",           "Rome / Milan (CET, UTC+1)"],
+  ["Europe/Warsaw",         "Warsaw / Prague (CET, UTC+1)"],
+  ["Europe/Stockholm",      "Stockholm / Copenhagen (CET, UTC+1)"],
+  ["Europe/Athens",         "Athens / Helsinki (EET, UTC+2)"],
+  ["Europe/Bucharest",      "Bucharest (EET, UTC+2)"],
+  ["Africa/Cairo",          "Cairo (EET, UTC+2)"],
+  ["Africa/Nairobi",        "Nairobi (EAT, UTC+3)"],
+  ["Africa/Johannesburg",   "Johannesburg (SAST, UTC+2)"],
+  ["Europe/Moscow",         "Moscow (MSK, UTC+3)"],
+  ["Asia/Dubai",            "Dubai / Abu Dhabi (GST, UTC+4)"],
+  ["Asia/Karachi",          "Karachi (PKT, UTC+5)"],
+  ["Asia/Colombo",          "Colombo (IST, UTC+5:30)"],
+  ["Asia/Kolkata",          "Mumbai / Delhi / Bangalore (IST, UTC+5:30)"],
+  ["Asia/Dhaka",            "Dhaka (BST, UTC+6)"],
+  ["Asia/Yangon",           "Yangon (MMT, UTC+6:30)"],
+  ["Asia/Bangkok",          "Bangkok / Jakarta (ICT, UTC+7)"],
+  ["Asia/Ho_Chi_Minh",      "Ho Chi Minh City (ICT, UTC+7)"],
+  ["Asia/Shanghai",         "Shanghai / Beijing (CST, UTC+8)"],
+  ["Asia/Singapore",        "Singapore (SGT, UTC+8)"],
+  ["Asia/Taipei",           "Taipei (CST, UTC+8)"],
+  ["Asia/Hong_Kong",        "Hong Kong (HKT, UTC+8)"],
+  ["Asia/Manila",           "Manila (PST, UTC+8)"],
+  ["Asia/Kuala_Lumpur",     "Kuala Lumpur (MYT, UTC+8)"],
+  ["Asia/Seoul",            "Seoul (KST, UTC+9)"],
+  ["Asia/Tokyo",            "Tokyo (JST, UTC+9)"],
+  ["Australia/Perth",       "Perth (AWST, UTC+8)"],
+  ["Australia/Darwin",      "Darwin (ACST, UTC+9:30)"],
+  ["Australia/Adelaide",    "Adelaide (ACST, UTC+9:30)"],
+  ["Australia/Brisbane",    "Brisbane (AEST, UTC+10)"],
+  ["Australia/Sydney",      "Sydney / Melbourne (AEST, UTC+10/+11)"],
+  ["Pacific/Auckland",      "Auckland (NZST, UTC+12)"]
+];
+
+const COLORS = ["#2563eb","#dc2626","#d97706","#7c3aed","#059669","#db2777","#0891b2","#65a30d"];
+const HOUR_LABELS = Array.from({length:24},(_,i)=>{
+  const h = i % 12 || 12;
+  return (i<12 ? h+"am" : h+"pm").replace("12am","12am").replace("12pm","12pm");
+});
+
+let members = [];
+
+function getOffsetMinutes(tz, isoDate) {
+  // Get UTC offset in minutes for a given IANA timezone on today's date
+  try {
+    const d = new Date(isoDate || Date.now());
+    const utcStr = new Intl.DateTimeFormat('en-US', {timeZone:'UTC', hour12:false, hour:'numeric', minute:'numeric'}).format(d);
+    const tzStr  = new Intl.DateTimeFormat('en-US', {timeZone:tz,    hour12:false, hour:'numeric', minute:'numeric'}).format(d);
+    const parse = s => { const p=s.split(':'); return (parseInt(p[0])%24)*60+parseInt(p[1]); };
+    let diff = parse(tzStr) - parse(utcStr);
+    if (diff > 720) diff -= 1440;
+    if (diff < -720) diff += 1440;
+    return diff;
+  } catch(e) { return 0; }
+}
+
+// For each member, compute which UTC hours (0-23) they are working
+function getWorkingUTCHours(member) {
+  const offsetMin = getOffsetMinutes(member.tz);
+  const offsetH = offsetMin / 60;
+  const working = new Set();
+  // member works localHour in [startH, endH)
+  for (let localH = member.start; localH < member.end; localH++) {
+    let utcH = ((localH - offsetH) % 24 + 24) % 24;
+    // Handle fractional offsets (e.g. IST +5:30): floor to slot
+    working.add(Math.floor(utcH));
+  }
+  return working;
+}
+
+function renderGrid() {
+  const el = document.getElementById('grid-content');
+  if (members.length === 0) {
+    el.innerHTML = `<div class="empty-state"><span class="empty-icon">🌍</span><span>Add team members to see the overlap grid</span></div>`;
+    return;
+  }
+
+  // Compute working UTC hours per member
+  const workMaps = members.map(m => getWorkingUTCHours(m));
+
+  // Overlap counts per UTC hour
+  const overlapCount = Array.from({length:24}, (_, h) => workMaps.filter(s => s.has(h)).length);
+  const maxOverlap = members.length;
+
+  // Best meeting slots: top 3 consecutive full-overlap hours
+  const fullOverlapHours = Array.from({length:24}, (_, h) => overlapCount[h] === maxOverlap && maxOverlap > 0);
+  const slots = rankSlots(fullOverlapHours, overlapCount, maxOverlap);
+
+  // Build HTML
+  let html = `<div class="grid-header">
+    <span class="grid-title">24-Hour Overlap Grid (UTC)</span>
+    <span class="tz-ref">All times in UTC — hover for local conversions</span>
+  </div>`;
+
+  // Hour ruler
+  html += `<div class="hour-ruler"><div class="hour-ruler-name" style="font-size:.68rem;color:var(--muted)">UTC →</div>`;
+  for (let h=0; h<24; h++) html += `<div class="hour-ruler-label">${h}</div>`;
+  html += `</div>`;
+
+  // Member rows
+  members.forEach((m, i) => {
+    html += `<div class="grid-row">
+      <div class="row-name"><span class="row-dot" style="background:${COLORS[i%8]}"></span>${escHtml(m.name)}</div>`;
+    for (let h=0; h<24; h++) {
+      const cls = workMaps[i].has(h) ? 'cell cell-work' : 'cell cell-off';
+      const localH = ((h + getOffsetMinutes(m.tz)/60) % 24 + 24) % 24;
+      const localLabel = HOUR_LABELS[Math.floor(localH)];
+      html += `<div class="${cls}" title="${escHtml(m.name)}: ${localLabel} local (UTC ${h}:00)"></div>`;
+    }
+    html += `</div>`;
+  });
+
+  // Overlap row
+  html += `<div class="overlap-row">
+    <div class="row-name" style="color:var(--overlap);font-size:.7rem;font-weight:700">OVERLAP</div>`;
+  for (let h=0; h<24; h++) {
+    const cnt = overlapCount[h];
+    let cls = 'overlap-cell-none';
+    if (cnt === maxOverlap && maxOverlap > 1) cls = 'overlap-cell-full';
+    else if (cnt > 1) cls = 'overlap-cell-partial';
+    html += `<div class="${cls}" title="${cnt}/${maxOverlap} available at UTC ${h}:00"></div>`;
+  }
+  html += `</div>`;
+
+  // Legend
+  html += `<div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--work);border:1px solid var(--work-border)"></div>Working hours</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--overlap);border-radius:50%"></div>Full overlap</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#86efac"></div>Partial overlap</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--off)"></div>Outside hours</div>
+  </div>`;
+
+  // Best meeting slots
+  html += `<div class="slots"><p class="slots-title">🏆 Best Meeting Windows</p>`;
+  if (slots.length === 0) {
+    html += `<div class="no-overlap">⚠️ No full overlap found. Try adjusting working hours or use the partial (yellow) overlap periods.</div>`;
+  } else {
+    html += `<div class="slot-cards">`;
+    slots.slice(0,3).forEach((slot, idx) => {
+      const medal = ['🥇','🥈','🥉'][idx];
+      const localTimes = members.map(m => {
+        const localH = Math.floor(((slot.utcH + getOffsetMinutes(m.tz)/60) % 24 + 24) % 24);
+        return `${escHtml(m.name.split(' ')[0])}: ${HOUR_LABELS[localH]}`;
+      }).join(' · ');
+      html += `<div class="slot-card">
+        <div class="slot-rank">${medal} Option ${idx+1}</div>
+        <div class="slot-time">UTC ${slot.utcH}:00–${(slot.utcH+1)%24}:00</div>
+        <div class="slot-detail">${localTimes}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  el.innerHTML = html;
+}
+
+function rankSlots(fullHours, overlapCount, maxOverlap) {
+  const slots = [];
+  // First prefer full overlap hours
+  for (let h=0; h<24; h++) {
+    if (fullHours[h]) slots.push({ utcH: h, score: maxOverlap });
+  }
+  // If fewer than 3, add partial overlap
+  if (slots.length < 3) {
+    for (let h=0; h<24; h++) {
+      if (!fullHours[h] && overlapCount[h] > 1) {
+        slots.push({ utcH: h, score: overlapCount[h] });
+      }
+    }
+    slots.sort((a,b) => b.score - a.score);
+  }
+  return slots;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function addMember() {
+  if (members.length >= 8) return;
+  const name = document.getElementById('inp-name').value.trim() || 'Member ' + (members.length+1);
+  const tz   = document.getElementById('inp-tz').value;
+  const start = parseInt(document.getElementById('inp-start').value);
+  const end   = parseInt(document.getElementById('inp-end').value);
+  if (end <= start) { alert('Work end must be after work start.'); return; }
+  members.push({ name, tz, start, end });
+  document.getElementById('inp-name').value = '';
+  renderMemberList();
+  renderGrid();
+}
+
+function removeMember(i) {
+  members.splice(i, 1);
+  renderMemberList();
+  renderGrid();
+}
+
+function renderMemberList() {
+  const list = document.getElementById('members-list');
+  document.getElementById('count-badge').textContent = `(${members.length} / 8)`;
+  document.getElementById('add-btn').disabled = members.length >= 8;
+  list.innerHTML = members.map((m, i) => `
+    <div class="member-chip">
+      <span class="chip-dot" style="background:${COLORS[i%8]}"></span>
+      <div class="chip-info">
+        <div class="chip-name">${escHtml(m.name)}</div>
+        <div class="chip-tz">${escHtml(TZ_LIST.find(t=>t[0]===m.tz)?.[1]||m.tz)} · ${HOUR_LABELS[m.start]}–${HOUR_LABELS[m.end]}</div>
+      </div>
+      <button class="remove-btn" onclick="removeMember(${i})" title="Remove">×</button>
+    </div>`).join('');
+}
+
+function clearAll() {
+  if (members.length && !confirm('Clear all team members?')) return;
+  members = [];
+  renderMemberList();
+  renderGrid();
+}
+
+function shareLink() {
+  const data = btoa(JSON.stringify(members));
+  const url = location.origin + location.pathname + '#team=' + encodeURIComponent(data);
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.querySelector('.share-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = '🔗 Copy Link', 2000);
+  });
+}
+
+function loadFromHash() {
+  const hash = location.hash;
+  if (!hash.includes('team=')) return;
+  try {
+    const raw = decodeURIComponent(hash.split('team=')[1]);
+    const parsed = JSON.parse(atob(raw));
+    if (Array.isArray(parsed)) {
+      members = parsed.slice(0, 8);
+      renderMemberList();
+      renderGrid();
+    }
+  } catch(e) { /* ignore bad hash */ }
+}
+
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+const FAQ = [
+  { q:"What is a timezone overlap tool?", a:"A timezone overlap tool shows when team members in different time zones are simultaneously available during their working hours, making it easy to find common meeting windows." },
+  { q:"How do I find the best meeting time for a remote team?", a:"Add each team member's timezone and working hours. The tool highlights the green overlap zone where everyone is available and suggests the top 3 one-hour meeting slots." },
+  { q:"Does this tool store my team data?", a:"No data is stored on any server. Your team config lives only in your browser and optionally in the shareable URL hash." },
+  { q:"Can I share the overlap grid with my team?", a:"Yes — click 'Copy Link' to get a URL that encodes your whole team setup. Share it on Slack, Notion, or email and your teammates can load it instantly." },
+  { q:"What is the best timezone overlap for US and India teams?", a:"A US East Coast (9am–6pm EST) and India (9am–6pm IST) team typically has a 30-minute to 1-hour overlap window around 8–9am EST / 6:30–7:30pm IST." },
+  { q:"How many team members can I add?", a:"You can add up to 8 team members. Each member can have a custom name, timezone, and working-hour range." }
+];
+
+function initFaq() {
+  const list = document.getElementById('faq-list');
+  FAQ.forEach(({ q, a }) => {
+    const item = document.createElement('div');
+    item.className = 'faq-item';
+    item.innerHTML = `<div class="faq-q" onclick="this.closest('.faq-item').classList.toggle('open')">${escHtml(q)}<svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">${escHtml(a)}</div>`;
+    list.appendChild(item);
+  });
+}
+
+function initSelects() {
+  const tzSel = document.getElementById('inp-tz');
+  TZ_LIST.forEach(([val, label]) => {
+    const o = document.createElement('option');
+    o.value = val; o.textContent = label;
+    if (val === 'Asia/Kolkata') o.selected = true;
+    tzSel.appendChild(o);
+  });
+
+  ['inp-start','inp-end'].forEach((id, idx) => {
+    const sel = document.getElementById(id);
+    for (let h=0; h<24; h++) {
+      const o = document.createElement('option');
+      o.value = h; o.textContent = HOUR_LABELS[h];
+      if (id==='inp-start' && h===9) o.selected=true;
+      if (id==='inp-end'   && h===18) o.selected=true;
+      sel.appendChild(o);
+    }
+  });
+}
+
+function init() {
+  initSelects();
+  initFaq();
+  loadFromHash();
+}
+
+init();
+</script>
+</body>
+</html>
